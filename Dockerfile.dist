@@ -14,6 +14,11 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 RUN yarn install --network-timeout 300000
 
+# When building, 4GB of memory is required.
+# This default setting can be overridden as needed in your shell, via an env file or in docker-compose.
+# See Docker environment var precedence: https://docs.docker.com/compose/environment-variables/envvars-precedence/
+ENV NODE_OPTIONS="--max_old_space_size=4096"
+
 ADD . /app/
 RUN yarn build:prod
 
