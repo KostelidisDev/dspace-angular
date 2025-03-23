@@ -3,3 +3,10 @@ rest:
   host: sandbox.dspace.org
   port: 443
   nameSpace: /server
+
+defaultLanguage: en
+
+languages:
+  - code: en
+    label: English
+    active: true
