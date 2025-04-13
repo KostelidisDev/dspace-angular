@@ -11,7 +11,7 @@ pipeline {
     stages {
         stage('Pipeline') {
             parallel {
-                stage('API') {
+                stage('UI') {
                     steps {
                         script {
                             dockerBuilder(
