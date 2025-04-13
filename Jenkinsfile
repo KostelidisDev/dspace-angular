@@ -6,17 +6,26 @@ pipeline {
     environment {
         DOCKER_PROJECT = 'repository'
         ARCHS = "linux/amd64,linux/arm64"
+        BUILDER_NAME = "multiarch-builder-${BUILD_ID}"
     }
 
     stages {
+        stage('Init') {
+            steps {
+                script {
+                    createDockerBuilder()
+                }
+            }
+        }
+
         stage('Pipeline') {
             parallel {
                 stage('UI') {
                     steps {
                         script {
-                            dockerBuilder(
+                            dockerBuild(
                                 'repository-ui', 
-                                './', 
+                                './',
                                 './Dockerfile.dist'
                             )
                         }
@@ -33,17 +42,28 @@ pipeline {
         success {
             echo "✅ All images built and pushed successfully."
         }
+        always {
+            sh "docker buildx rm ${BUILDER_NAME} || true"
+        }
     }
 }
 
-def dockerBuilder(imageName, contextPath, dockerfileName, extraBuildContext = []) {
+def createDockerBuilder() {
+    sh """
+        docker buildx create --use --name ${env.BUILDER_NAME}
+    """
+    sh """
+        docker buildx inspect --bootstrap
+    """
+}
+
+def dockerBuild(imageName, contextPath, dockerfileName, extraBuildContext = []) {
     def timestamp = sh(script: "date +%Y.%m.%d%H", returnStdout: true).trim()
 
-    def imageTagLatest = "${DOCKER_REGISTRY}/${DOCKER_PROJECT}/${imageName}:latest"
-    def imageTagTimestamped = "${DOCKER_REGISTRY}/${DOCKER_PROJECT}/${imageName}:${timestamp}"
+    def imageTagLatest = "${env.DOCKER_REGISTRY}/${env.DOCKER_PROJECT}/${imageName}:latest"
+    def imageTagTimestamped = "${env.DOCKER_REGISTRY}/${env.DOCKER_PROJECT}/${imageName}:${timestamp}"
 
     def buildContextArgs = ""
-
     if (extraBuildContext) {
         extraBuildContext.each { context ->
             buildContextArgs += " --build-context ${context}"
@@ -52,30 +72,23 @@ def dockerBuilder(imageName, contextPath, dockerfileName, extraBuildContext = []
 
     withCredentials([
         usernamePassword(
-            credentialsId: DOCKER_CREDENTIALS_ID, 
-            usernameVariable: 'DOCKER_USER', 
+            credentialsId: env.DOCKER_CREDENTIALS_ID,
+            usernameVariable: 'DOCKER_USER',
             passwordVariable: 'DOCKER_PASS'
         )
     ]) {
         sh """
-            echo \$DOCKER_PASS | docker login ${DOCKER_REGISTRY} -u \$DOCKER_USER --password-stdin
+            echo \$DOCKER_PASS | docker login ${env.DOCKER_REGISTRY} -u \$DOCKER_USER --password-stdin
         """
+
         sh """
-            docker buildx create --use --platform=$ARCHS --name multi-platform-builder-${imageName}
-        """
-        sh """
-            docker buildx inspect --bootstrap
-        """
-        sh """
-            docker \
-                buildx \
-                build \
-                --push \
-                --platform=$ARCHS \
+            docker buildx build \
+                --platform=${env.ARCHS} \
                 ${buildContextArgs} \
-                    -f ${dockerfileName} \
-                    -t ${imageTagLatest} \
-                    -t ${imageTagTimestamped} \
+                -f ${dockerfileName} \
+                -t ${imageTagLatest} \
+                -t ${imageTagTimestamped} \
+                --push \
                 ${contextPath}
         """
     }
