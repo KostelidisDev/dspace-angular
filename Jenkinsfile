@@ -1,8 +1,8 @@
 def nativeArch = 'amd64'
 
 def builds = [
-    [arch: 'arm64', name: 'repository-ui',  context: './',  dockerfile: './Dockerfile.dist', extraContext: []],
-    [arch: 'amd64', name: 'repository-ui',  context: './',  dockerfile: './Dockerfile.dist', extraContext: []],
+    [arch: 'arm64', name: 'repository-ui',  context: '.',  dockerfile: './Dockerfile.dist', extraContext: []],
+    [arch: 'amd64', name: 'repository-ui',  context: '.',  dockerfile: './Dockerfile.dist', extraContext: []],
 ]
 
 def merges = builds.findAll { it.arch == nativeArch }
