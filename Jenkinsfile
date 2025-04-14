@@ -1,11 +1,6 @@
-def nativeArch = 'amd64'
-
 def builds = [
-    [arch: 'arm64', name: 'repository-ui',  context: '.',  dockerfile: './Dockerfile.dist', extraContext: []],
-    [arch: 'amd64', name: 'repository-ui',  context: '.',  dockerfile: './Dockerfile.dist', extraContext: []],
+    [name: 'repository-ui',  context: './',  dockerfile: './Dockerfile.dist', extraContext: []],
 ]
-
-def merges = builds.findAll { it.arch == nativeArch }
 
 pipeline {
     agent any
@@ -15,22 +10,23 @@ pipeline {
     }
 
     stages {
-        stage('Build Multi-Arch Images') {
+        stage('Build arm64 images') {
+            agent {
+                label 'arm64'
+            }
             steps {
                 script {
                     def parallelStages = builds.collectEntries { build ->
-                        def stageName = "${build.name}-${build.arch}"
+                        def stageName = "${build.name}-arm64'"
                         [(stageName): {
-                            node(build.arch) {
-                                stage(stageName) {
-                                    dockerBuildImage(
-                                        build.arch,
-                                        build.name,
-                                        build.context,
-                                        build.dockerfile,
-                                        build.extraContext
-                                    )
-                                }
+                            stage(stageName) {
+                                dockerBuildImage(
+                                    'arm64',
+                                    build.name,
+                                    build.context,
+                                    build.dockerfile,
+                                    build.extraContext
+                                )
                             }
                         }]
                     }
@@ -38,19 +34,43 @@ pipeline {
                 }
             }
         }
-
-        stage('Merge Multi-Arch Images') {
+        stage('Build amd64 images') {
+            agent {
+                label 'amd64'
+            }
             steps {
                 script {
-                    def parallelStages = merges.collectEntries { build ->
-                        def stageName = "${build.name}"
+                    def parallelStages = builds.collectEntries { build ->
+                        def stageName = "${build.name}-amd64'"
                         [(stageName): {
-                            node(build.arch) {
-                                stage(stageName) {
-                                    dockerMergeImages(
-                                        build.name
-                                    )
-                                }
+                            stage(stageName) {
+                                dockerBuildImage(
+                                    'amd64',
+                                    build.name,
+                                    build.context,
+                                    build.dockerfile,
+                                    build.extraContext
+                                )
+                            }
+                        }]
+                    }
+                    parallel parallelStages
+                }
+            }
+        }
+        stage('Merge images') {
+            agent {
+                label 'amd64'
+            }
+            steps {
+                script {
+                    def parallelStages = builds.collectEntries { build ->
+                        def stageName = "${build.name}'"
+                        [(stageName): {
+                            stage(stageName) {
+                                dockerMergeImages(
+                                    build.name,
+                                )
                             }
                         }]
                     }
