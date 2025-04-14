@@ -1,16 +1,14 @@
 def nativeArch = 'amd64'
 
 def builds = [
-    [arch: 'arm64', name: 'repository-ui',  path: './',  dockerfile: './Dockerfile.dist', extraContext: []],
-    [arch: 'amd64', name: 'repository-ui',  path: './',  dockerfile: './Dockerfile.dist', extraContext: []],
+    [arch: 'arm64', name: 'repository-ui',  context: './',  dockerfile: './Dockerfile.dist', extraContext: []],
+    [arch: 'amd64', name: 'repository-ui',  context: './',  dockerfile: './Dockerfile.dist', extraContext: []],
 ]
 
 def merges = builds.findAll { it.arch == nativeArch }
 
 pipeline {
-    agent {
-        label nativeArch
-    }
+    agent any
 
     environment {
         DOCKER_PROJECT = 'repository'
@@ -28,7 +26,7 @@ pipeline {
                                     dockerBuildImage(
                                         build.arch,
                                         build.name,
-                                        build.path,
+                                        build.context,
                                         build.dockerfile,
                                         build.extraContext
                                     )
