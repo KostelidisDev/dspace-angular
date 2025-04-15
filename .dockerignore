@@ -26,3 +26,5 @@ npm-debug.log.*
 # Webpack files
 webpack.records.json
 package-lock.json
+
+Jenkinsfile
